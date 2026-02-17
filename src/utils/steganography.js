@@ -70,7 +70,7 @@ export function injectText(canvas, text, seed = '') {
   }
 
   if (bits.length > availableIndices.length) {
-    throw new Error('Tekst jest za długi dla tego obrazu.');
+    throw new Error('Text is too long for this image.');
   }
 
   // Determine indices for bit placement
@@ -124,7 +124,7 @@ export function extractText(canvas, seed = '') {
       const j = Math.floor(prng() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    // Read all bits in shuffled order (we don't know the exact length yet, so read all)
+    // Read all bits in shuffled order
     for (let i = 0; i < shuffled.length; i++) {
       bits.push(data[shuffled[i]] & 1);
     }
@@ -148,7 +148,7 @@ export function extractText(canvas, seed = '') {
   const endIndex = fullContent.indexOf('##END##');
   
   if (endIndex === -1) {
-    throw new Error('Nie znaleziono wiadomości (zły Seed?).');
+    throw new Error('Message not found (invalid Seed?).');
   }
 
   let processedText = fullContent.substring(0, endIndex);
@@ -159,6 +159,6 @@ export function extractText(canvas, seed = '') {
   try {
     return decodeURIComponent(escape(atob(processedText)));
   } catch (e) {
-    throw new Error('Błąd odkodowania Base64 (zły Seed?).');
+    throw new Error('Base64 decoding error (invalid Seed?).');
   }
 }
