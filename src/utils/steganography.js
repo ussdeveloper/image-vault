@@ -40,9 +40,10 @@ function xorCipher(text, seed) {
  * @param {HTMLCanvasElement} canvas - Canvas containing the image data.
  * @param {string} text - The text to hide.
  * @param {string} seed - Optional seed for encryption and bit placement.
+ * @param {number} redundancy - Number of times each bit is repeated (default 1).
  * @returns {string} - Data URL of the new image.
  */
-export function injectText(canvas, text, seed = '') {
+export function injectText(canvas, text, seed = '', redundancy = 1) {
   const ctx = canvas.getContext('2d');
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
@@ -54,12 +55,16 @@ export function injectText(canvas, text, seed = '') {
   
   const fullMessage = processedText + '##END##';
   
-  // Convert full message to bits
+  // Convert full message to bits with redundancy
   const bits = [];
   for (let i = 0; i < fullMessage.length; i++) {
     const charCode = fullMessage.charCodeAt(i);
     for (let j = 7; j >= 0; j--) {
-      bits.push((charCode >> j) & 1);
+      const bit = (charCode >> j) & 1;
+      // Repeat bit N times for redundancy
+      for (let r = 0; r < redundancy; r++) {
+        bits.push(bit);
+      }
     }
   }
 
@@ -70,7 +75,7 @@ export function injectText(canvas, text, seed = '') {
   }
 
   if (bits.length > availableIndices.length) {
-    throw new Error('Text is too long for this image.');
+    throw new Error(`Text + redundancy (${redundancy}x) is too long for this image.`);
   }
 
   // Determine indices for bit placement
@@ -107,9 +112,10 @@ export function injectText(canvas, text, seed = '') {
  * Extracts hidden text from an image data.
  * @param {HTMLCanvasElement} canvas - Canvas containing the image data.
  * @param {string} seed - Optional seed for decryption and bit location.
+ * @param {number} redundancy - Number of times each bit was repeated (default 1).
  * @returns {string} - The extracted text.
  */
-export function extractText(canvas, seed = '') {
+export function extractText(canvas, seed = '', redundancy = 1) {
   const ctx = canvas.getContext('2d');
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
@@ -120,7 +126,7 @@ export function extractText(canvas, seed = '') {
     if ((i + 1) % 4 !== 0) availableIndices.push(i);
   }
 
-  let bits = [];
+  let rawBits = [];
   if (seed) {
     // Generate the same shuffled sequence
     const prng = getPRNG(hashString(seed));
@@ -131,20 +137,35 @@ export function extractText(canvas, seed = '') {
     }
     // Read all bits in shuffled order
     for (let i = 0; i < shuffled.length; i++) {
-      bits.push(data[shuffled[i]] & 1);
+      rawBits.push(data[shuffled[i]] & 1);
     }
   } else {
     // Standard linear reading
     for (let i = 0; i < availableIndices.length; i++) {
-      bits.push(data[availableIndices[i]] & 1);
+      rawBits.push(data[availableIndices[i]] & 1);
     }
   }
 
+  // Resolve redundancy using majority vote
+  const resolvedBits = [];
+  for (let i = 0; i < rawBits.length; i += redundancy) {
+    if (i + redundancy > rawBits.length) break;
+    
+    let ones = 0;
+    for (let r = 0; r < redundancy; r++) {
+      if (rawBits[i + r] === 1) ones++;
+    }
+    // Majority vote
+    resolvedBits.push(ones > redundancy / 2 ? 1 : 0);
+  }
+
   let chars = [];
-  for (let i = 0; i < bits.length; i += 8) {
+  for (let i = 0; i < resolvedBits.length; i += 8) {
+    if (i + 8 > resolvedBits.length) break;
+    
     let charCode = 0;
     for (let j = 0; j < 8; j++) {
-      charCode = (charCode << 1) | bits[i + j];
+      charCode = (charCode << 1) | resolvedBits[i + j];
     }
     chars.push(String.fromCharCode(charCode));
   }
@@ -153,7 +174,7 @@ export function extractText(canvas, seed = '') {
   const endIndex = fullContent.indexOf('##END##');
   
   if (endIndex === -1) {
-    throw new Error('Message not found (invalid Seed?).');
+    throw new Error('Message not found (invalid Seed/Redundancy?).');
   }
 
   let processedText = fullContent.substring(0, endIndex);
@@ -164,6 +185,6 @@ export function extractText(canvas, seed = '') {
   try {
     return decodeURIComponent(escape(atob(processedText)));
   } catch (e) {
-    throw new Error('Base64 decoding error (invalid Seed?).');
+    throw new Error('Base64 decoding error (invalid Seed/Redundancy?).');
   }
 }

@@ -7,6 +7,7 @@ const originalImage = ref(null);
 const resultImage = ref(null);
 const secretText = ref('');
 const seed = ref('');
+const redundancy = ref(1);
 const includeTimestamp = ref(true);
 const includeLocation = ref(false);
 const isProcessing = ref(false);
@@ -115,7 +116,7 @@ const generateImage = async () => {
 
     setTimeout(() => {
       try {
-        resultImage.value = injectText(canvas, finalMessage, seed.value);
+        resultImage.value = injectText(canvas, finalMessage, seed.value, redundancy.value);
         progress.value = 100;
         success.value = seed.value ? 'Text encrypted and hidden successfully!' : 'Text hidden successfully!';
       } catch (e) {
@@ -155,7 +156,7 @@ const handleExtract = () => {
 
     setTimeout(() => {
       try {
-        extractedResult.value = extractText(canvas, seed.value);
+        extractedResult.value = extractText(canvas, seed.value, redundancy.value);
         progress.value = 100;
         success.value = seed.value ? 'Text extracted and decrypted successfully!' : 'Text extracted successfully!';
         
@@ -298,7 +299,25 @@ const reset = () => {
               </ul>
             </section>
             <section>
-              <h3>3. Security Notes</h3>
+              <h3>3. How to send via Signal / WhatsApp / Telegram</h3>
+              <p>Applications like Signal or WhatsApp compress images by default, which <strong>destroys hidden data</strong>. To send an image without losing data:</p>
+              <ul>
+                <li><strong>DO NOT</strong> send as a "Photo".</li>
+                <li><strong>ALWAYS</strong> send as a <strong>"File" or "Document"</strong>.</li>
+                <li>This ensures the image is delivered bit-perfectly without compression.</li>
+              </ul>
+            </section>
+            <section>
+              <h3>4. Robustness (Redundancy)</h3>
+              <p>The <strong>Redundancy Level</strong> allows you to store the same data multiple times (3x, 5x, 7x, or 9x). During extraction, we use a "majority vote" system to decide the correct bit value.</p>
+              <ul>
+                <li><strong>Higher redundancy (e.g. 9x):</strong> Makes the data much more resistant to minor bit flips or errors during transmission (e.g. slight compression). However, it drastically reduces the maximum amount of text you can hide.</li>
+                <li><strong>Lower redundancy (1x):</strong> Maximum capacity, but even a single pixel change might corrupt your message.</li>
+                <li><strong>Note:</strong> You must use the same redundancy level for both encoding and decoding!</li>
+              </ul>
+            </section>
+            <section>
+              <h3>5. Security Notes</h3>
               <p>Without the correct Seed, the hidden message is mathematically distributed across the image pixels and encrypted using XOR. Even if someone knows the algorithm, they cannot retrieve the message without your key.</p>
             </section>
           </div>
@@ -334,6 +353,12 @@ const reset = () => {
                   <input v-model="seed" type="text" class="vscode-input" placeholder="Enter seed for encryption and randomization..." />
                 </div>
 
+                <div class="field">
+                  <label>Redundancy Level (current: {{ redundancy }}x):</label>
+                  <input v-model.number="redundancy" type="range" min="1" max="9" step="2" class="vscode-slider" />
+                  <div class="slider-hint">Higher values increase retrieval chance if image bits are slightly altered, but reduce capacity.</div>
+                </div>
+
                 <div class="field checkbox-field">
                   <label class="checkbox-container">
                     <input type="checkbox" v-model="includeTimestamp" />
@@ -366,6 +391,12 @@ const reset = () => {
                   <label>Seed (if used during encoding):</label>
                   <input v-model="seed" type="text" class="vscode-input" placeholder="Enter the exact seed..." />
                 </div>
+
+                <div class="field">
+                  <label>Redundancy Level (must match injection):</label>
+                  <input v-model.number="redundancy" type="range" min="1" max="9" step="2" class="vscode-slider" />
+                </div>
+
                 <button class="vscode-btn" @click="handleExtract" :disabled="isProcessing || !originalImage">
                   {{ isProcessing ? 'DECODING...' : 'EXTRACT CONTENT' }}
                 </button>
@@ -682,6 +713,41 @@ body, html {
 
 .vscode-input:focus {
   outline: 1px solid var(--vscode-btn);
+}
+
+.vscode-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--vscode-input-bg);
+  outline: none;
+  border-radius: 2px;
+  margin: 10px 0;
+}
+
+.vscode-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--vscode-btn);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.vscode-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--vscode-btn);
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+}
+
+.slider-hint {
+  font-size: 10px;
+  color: #777;
+  line-height: 1.3;
 }
 
 textarea {
