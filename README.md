@@ -15,6 +15,7 @@
 - **Metadata Support**:
   - **Timestamp & Timezone**: Automatically log when the message was hidden.
   - **Precise Location**: Optional GPS coordinate injection with interactive Map decoding (Leaflet.js).
+- **Transparent PNG Support**: Advanced handling of alpha channels to prevent data loss in transparent areas by forcing pixel opacity for data-carrying pixels.
 - **100% Private**: All processing happens locally in the browser. No data is ever sent to a server.
 - **VS Code Theme**: Sleek, developer-friendly interface.
 - **GDPR Compliant**: Local-only processing with clear privacy disclosures.
@@ -31,7 +32,7 @@
 
 ### Hiding a Message (Inject)
 1.  Navigate to the **Inject.png** tab.
-2.  Upload or drag-and-drop a source image.
+2.  Upload or drag-and-drop a source image. **Note:** Transparent PNGs are supported; the tool will adjust opacity for used pixels to ensure data integrity.
 3.  (Recommended) Enter a **Seed**. This acts as your secret key.
 4.  Toggle "Include timestamp" or "Include precise location" if needed.
 5.  Type your message and click **GENERATE IMAGE**.
@@ -42,7 +43,7 @@
 2.  Upload the encoded PNG file.
 3.  Enter the **Seed** used during the injection process.
 4.  Click **EXTRACT CONTENT**.
-5.  If location data was included, an interactive map will automatically appear.
+5.  If location data was included, an interactive map will automatically appear under the extracted text.
 
 ## 🔒 Security Architecture
 
@@ -55,6 +56,9 @@ Without the Seed, the hidden bits are placed linearly. When a Seed is provided:
 
 ### XOR Cipher
 The text is Base64 encoded and then processed through a symmetric XOR cipher using the Seed string as the key before the LSB process begins.
+
+### Data Integrity (Alpha Handling)
+To solve the issue of browsers "optimizing away" RGB data in transparent PNGs (Alpha Premultiplication), the tool forces the Alpha channel to `255` (fully opaque) for every pixel that contains a bit of the hidden message. This guarantees that the hidden data remains readable regardless of the original image's transparency.
 
 ## 📦 Installation & Development
 

@@ -92,6 +92,11 @@ export function injectText(canvas, text, seed = '') {
   for (let i = 0; i < bits.length; i++) {
     const idx = targetIndices[i];
     data[idx] = (data[idx] & 0xFE) | bits[i];
+    
+    // Safety for transparent PNGs: Force Alpha channel to 255 for used pixels 
+    // to prevent browser from "optimizing away" RGB data in transparent areas.
+    const alphaIdx = idx + (3 - (idx % 4)); 
+    data[alphaIdx] = 255;
   }
 
   ctx.putImageData(imageData, 0, 0);
